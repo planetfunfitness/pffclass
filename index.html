@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Planet Fun Fitness — Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#050609;
+    --surface:#0D1020;
+    --surface-2:#161A30;
+    --border:#282E4C;
+    --text:#F5F6FA;
+    --muted:#868EB0;
+    --coral:#FFD400;
+    --coral-dim:#4a4005;
+    --teal:#3B55FF;
+    --teal-dim:#161f52;
+    --amber:#6C86FF;
+    --amber-dim:#1c2350;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  ::selection{background:var(--coral);color:#0A0A0F;}
+  .app{
+    max-width:560px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:var(--ink);
+    position:relative;
+  }
+  /* ---------- Header ---------- */
+  header.top{
+    padding:22px 20px 14px;
+    position:sticky;
+    top:0;
+    background:linear-gradient(180deg, var(--ink) 80%, transparent);
+    z-index:20;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand-mark{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:34px;
+    letter-spacing:1px;
+    line-height:1;
+    color:var(--text);
+  }
+  .brand-mark span{color:var(--coral);}
+  .brand-sub{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    font-weight:600;
+  }
+  .tabs{
+    display:flex;
+    gap:6px;
+    margin-top:16px;
+    background:var(--surface);
+    padding:4px;
+    border-radius:999px;
+    border:1px solid var(--border);
+  }
+  .tab-btn{
+    flex:1;
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.4px;
+    padding:10px 0;
+    border-radius:999px;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .tab-btn.active{
+    background:var(--coral);
+    color:#0A0A0F;
+  }
+  main{
+    flex:1;
+    padding:4px 20px 100px;
+  }
+  /* ---------- Registration ---------- */
+  .reg-card{
+    margin-top:40px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:26px 22px;
+    text-align:center;
+  }
+  .reg-card h2{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:28px;
+    letter-spacing:.5px;
+    margin:0 0 6px;
+  }
+  .reg-card p{
+    color:var(--muted);
+    font-size:13.5px;
+    margin:0 0 22px;
+    line-height:1.5;
+  }
+  .field{
+    text-align:left;
+    margin-bottom:14px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:13px 14px;
+    border-radius:10px;
+    font-size:15px;
+    font-family:'Inter',sans-serif;
+  }
+  .field input:focus{
+    outline:none;
+    border-color:var(--coral);
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:none;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:.3px;
+    padding:14px 18px;
+    border-radius:11px;
+    width:100%;
+    transition:.15s transform, .15s opacity;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--coral); color:#0A0A0F;}
+  .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text);}
+  .btn-teal{background:var(--teal); color:#fff;}
+  .btn-amber{background:var(--amber); color:#0A0E24;}
+  .btn-ghost{background:var(--surface-2); color:var(--muted);}
+  .btn-danger{background:transparent;border:1.5px solid var(--coral); color:var(--coral);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  /* ---------- Greeting row ---------- */
+  .greet-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin:18px 0 6px;
+  }
+  .greet-row .who{font-size:13.5px;color:var(--muted);}
+  .greet-row .who b{color:var(--text);}
+  .link-btn{
+    background:none;border:none;color:var(--teal);
+    font-size:12.5px;font-weight:700;cursor:pointer;padding:4px;
+  }
+  /* ---------- Week track (signature element) ---------- */
+  .week-track{
+    display:flex;
+    justify-content:space-between;
+    margin:14px 0 6px;
+    padding:10px 6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+  }
+  .day-pill{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:8px 2px;
+    border-radius:10px;
+    cursor:pointer;
+    position:relative;
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    font-family:'Inter',sans-serif;
+  }
+  .day-pill .dname{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+  .day-pill .dnum{font-size:15px;font-weight:800;color:var(--text);}
+  .day-pill .ddot{width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:0;}
+  .day-pill.has-class .ddot{opacity:1;}
+  .day-pill.today .dnum{color:var(--coral);}
+  .day-pill.disabled{opacity:.3;cursor:not-allowed;}
+  .day-pill.selected{background:var(--coral);}
+  .day-pill.selected .dname,.day-pill.selected .dnum{color:#0A0A0F;}
+  .day-pill.selected .ddot{background:#0A0A0F;}
+  /* ---------- Date nav ---------- */
+  .date-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin:16px 0 14px;
+  }
+  .date-nav .nav-arrow{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    width:40px;height:40px;
+    border-radius:50%;
+    font-size:18px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .date-nav .date-label{
+    text-align:center;
+    flex:1;
+  }
+  .date-nav .date-label .dow{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:20px;
+    letter-spacing:.5px;
+  }
+  .date-nav .date-label .full{
+    font-size:11.5px;
+    color:var(--muted);
+  }
+  .today-chip{
+    display:inline-block;
+    margin-top:4px;
+    background:none;
+    border:1px solid var(--teal);
+    color:var(--teal);
+    font-size:10.5px;
+    font-weight:700;
+    padding:2px 10px;
+    border-radius:999px;
+    cursor:pointer;
+  }
+  /* ---------- Class cards ---------- */
+  .class-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:0;
+    margin-bottom:14px;
+    overflow:hidden;
+    display:flex;
+  }
+  .class-accent{width:6px;flex-shrink:0;}
+  .class-body{padding:16px 16px 14px;flex:1;min-width:0;}
+  .class-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .class-name{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:22px;
+    letter-spacing:.4px;
+    line-height:1.1;
+  }
+  .class-cat{
+    font-size:10px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    padding:3px 8px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  .class-meta{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .class-instructor{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .progress-wrap{margin-top:12px;}
+  .progress-labels{
+    display:flex;justify-content:space-between;
+    font-size:12px;font-weight:700;margin-bottom:6px;
+  }
+  .progress-track{
+    height:7px;background:var(--surface-2);border-radius:99px;overflow:hidden;
+  }
+  .progress-fill{height:100%;border-radius:99px;transition:width .2s;}
+  .slots-text{font-size:12px;color:var(--muted);margin-top:6px;}
+  .waitlist-text{font-size:12px;color:var(--amber);margin-top:2px;font-weight:600;}
+  .class-actions{margin-top:13px;}
+  .status-badge{
+    font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+  .badge-booked{background:var(--teal-dim);color:var(--teal);}
+  .badge-waitlist{background:var(--amber-dim);color:var(--amber);}
+  .empty-state{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+  }
+  .empty-state .big{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);margin-bottom:6px;}
+  /* ---------- Admin ---------- */
+  .stat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin:16px 0;
+  }
+  .stat-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+  }
+  .stat-card .num{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--coral);line-height:1;}
+  .stat-card .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;font-weight:700;}
+  .admin-subtabs{
+    display:flex;gap:8px;margin-bottom:14px;
+  }
+  .admin-subtabs button{
+    flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);
+    padding:10px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;
+  }
+  .admin-subtabs button.active{background:var(--surface-2);color:var(--text);border-color:var(--coral);}
+  .tpl-row{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .tpl-info .name{font-family:'Bebas Neue',sans-serif;font-size:18px;}
+  .tpl-info .meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .tpl-actions{display:flex;gap:6px;}
+  .icon-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn.danger{color:var(--coral);border-color:var(--coral-dim);}
+  .roster-block{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:14px;
+  }
+  .roster-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .roster-title .name{font-family:'Bebas Neue',sans-serif;font-size:19px;}
+  .roster-title .cap{font-size:11.5px;color:var(--muted);font-weight:600;}
+  .roster-sub{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .roster-section-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin:10px 0 6px;}
+  .roster-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 0;border-top:1px solid var(--border);gap:8px;
+  }
+  .roster-item:first-child{border-top:none;}
+  .roster-item .pname{font-size:13.5px;font-weight:600;}
+  .roster-item .pphone{font-size:11px;color:var(--muted);}
+  .roster-actions{display:flex;gap:5px;flex-shrink:0;}
+  .mini-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    font-size:10.5px;font-weight:700;padding:6px 8px;border-radius:7px;cursor:pointer;white-space:nowrap;
+  }
+  .mini-btn.teal{color:var(--teal);border-color:var(--teal-dim);}
+  .mini-btn.coral{color:var(--coral);border-color:var(--coral-dim);}
+  .mini-btn.amber{color:var(--amber);border-color:var(--amber-dim);}
+  .none-text{font-size:12px;color:var(--muted);font-style:italic;padding:6px 0;}
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,12,15,.7);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:100;
+  }
+  .overlay.hidden{display:none;}
+  .modal{
+    background:var(--surface);
+    width:100%;max-width:560px;
+    border-radius:20px 20px 0 0;
+    padding:22px 20px 26px;
+    max-height:85vh;overflow-y:auto;
+    border-top:1px solid var(--border);
+  }
+  .modal h3{
+    font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.4px;margin:0 0 14px;
+  }
+  .modal .close-x{
+    position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
+  }
+  .modal-wrap{position:relative;}
+  select{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:13px 14px;border-radius:10px;font-size:15px;font-family:'Inter',sans-serif;
+  }
+  .form-row{display:flex;gap:10px;}
+  .form-row .field{flex:1;}
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;
+    z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    opacity:0;pointer-events:none;transition:.25s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+  footer.reset-footer{
+    padding:18px 20px 30px;text-align:center;
+  }
+  footer.reset-footer button{
+    background:none;border:none;color:var(--muted);font-size:11.5px;text-decoration:underline;cursor:pointer;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">Planet Fun<span>.</span></div>
+    </div>
+    <div class="brand-sub">Fitness — Booking Kelas</div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tabMemberBtn" onclick="switchTab('member')">MEMBER</button>
+      <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin')">ADMIN</button>
+    </div>
+  </header>
+
+  <main id="mainContent"></main>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal-wrap">
+    <div class="modal" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONSTANTS
+========================================================= */
+const DAY_NAMES_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const DAY_NAMES_SHORT = ['MIN','SEN','SEL','RAB','KAM','JUM','SAB'];
+const MONTH_NAMES_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+const CATEGORY_MAP = {
+  'Zumba':'cardio','Spin 30':'cardio',
+  'TRX':'strength','HIIT Power':'strength','HIIT Burns':'strength','Functional Strength':'strength',
+  'Yoga':'mindbody','Mat Pilates':'mindbody'
+};
+const CATEGORY_STYLE = {
+  cardio:   {accent:'#3B55FF', dim:'#161f52', label:'Cardio'},
+  strength: {accent:'#FFD400', dim:'#4a4005', label:'Strength'},
+  mindbody: {accent:'#6C86FF', dim:'#1c2350', label:'Mind & Body'}
+};
+
+const STORAGE_KEYS = {
+  member: 'pff_member_v1'
+};
+
+/* =========================================================
+   SUPABASE CONFIG
+   Fill these in after running supabase_setup.sql — see
+   Project Settings → API in your Supabase dashboard.
+========================================================= */
+const SUPABASE_URL = 'https://zrtrsrwmrfmzdpumyswx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Cj1Xc5GZ9rTXeoALpnF8mQ_iCp8mMLa';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function defaultClasses(){
+  return [
+    {id:1, name:'Zumba', day:1, time:'08:00', instructor:'Cing Cing', capacity:17},
+    {id:2, name:'Spin 30', day:1, time:'17:00', instructor:'Vega', capacity:7},
+    {id:3, name:'HIIT Power', day:1, time:'18:15', instructor:'Zhi', capacity:8},
+    {id:4, name:'Zumba', day:1, time:'19:10', instructor:'Cing Cing', capacity:17},
+    {id:5, name:'TRX', day:2, time:'08:00', instructor:'Vega', capacity:9},
+    {id:6, name:'Spin 30', day:2, time:'09:10', instructor:'Vega', capacity:7},
+    {id:7, name:'Yoga', day:2, time:'18:15', instructor:'Fitri', capacity:15},
+    {id:8, name:'Mat Pilates', day:3, time:'08:00', instructor:'Vega', capacity:9},
+    {id:9, name:'TRX', day:3, time:'18:15', instructor:'Vega', capacity:9},
+    {id:10, name:'Functional Strength', day:4, time:'08:00', instructor:'Vega', capacity:8},
+    {id:11, name:'Mat Pilates', day:4, time:'17:00', instructor:'Vega', capacity:9},
+    {id:12, name:'Functional Strength', day:4, time:'18:15', instructor:'Vega', capacity:8},
+    {id:13, name:'HIIT Power', day:5, time:'08:00', instructor:'Zhi', capacity:8},
+    {id:14, name:'HIIT Burns', day:5, time:'17:00', instructor:'Zhi', capacity:8},
+    {id:15, name:'Spin 30', day:6, time:'08:00', instructor:'Vega', capacity:7},
+  ];
+}
+
+/* =========================================================
+   DATA ACCESS LAYER — talks to Supabase instead of localStorage.
+   Classes are cached client-side in state.classes and refreshed
+   after any admin edit. Bookings are never cached long-term —
+   they're always fetched fresh per date so counts stay accurate
+   across every member/admin viewing the app at the same time.
+========================================================= */
+async function loadClassesFromDb(){
+  const { data, error } = await sb.from('classes').select('*').order('day').order('time');
+  if(error){ showToast('Gagal memuat jadwal: ' + error.message); return []; }
+  return data;
+}
+async function loadOccurrencesForDate(date){
+  const { data, error } = await sb.rpc('get_occurrences', { p_date: toDateKey(date) });
+  if(error){ showToast('Gagal memuat kelas: ' + error.message); return []; }
+  return data;
+}
+async function loadMyBookingsForDate(date, phone){
+  if(!phone) return [];
+  const { data, error } = await sb.rpc('get_my_bookings_for_date', { p_date: toDateKey(date), p_phone: phone });
+  if(error){ return []; }
+  return data;
+}
+async function loadAdminRosterForDate(date){
+  const dateKey = toDateKey(date);
+  const classesToday = getClassesForDay(date.getDay());
+  if(classesToday.length === 0) return [];
+  const classIds = classesToday.map(c => c.id);
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('occurrence_date', dateKey)
+    .in('class_id', classIds)
+    .neq('status', 'CANCELLED')
+    .order('created_at', { ascending: true });
+  if(error){ showToast('Gagal memuat booking: ' + error.message); return []; }
+  return data;
+}
+function loadMember(){
+  const raw = localStorage.getItem(STORAGE_KEYS.member);
+  return raw ? JSON.parse(raw) : null;
+}
+function saveMember(member){
+  localStorage.setItem(STORAGE_KEYS.member, JSON.stringify(member));
+}
+function clearMember(){
+  localStorage.removeItem(STORAGE_KEYS.member);
+}
+
+/* =========================================================
+   APP STATE
+========================================================= */
+let state = {
+  activeTab: 'member',
+  selectedDate: startOfDay(new Date()),
+  adminSubtab: 'schedule',
+  adminSelectedDate: startOfDay(new Date()),
+  isAdmin: false,           // confirmed against the `admins` table, not just "logged in"
+  classes: [],              // cached schedule templates, loaded at startup
+  occurrences: [],          // member view: this date's classes + live counts
+  myBookings: [],           // member view: this member's active bookings for this date
+  adminRoster: [],          // admin view: raw bookings for this date's classes
+  member: loadMember(),
+};
+
+function startOfDay(d){
+  const nd = new Date(d);
+  nd.setHours(0,0,0,0);
+  return nd;
+}
+
+/* =========================================================
+   DATE HELPERS
+========================================================= */
+function toDateKey(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function formatFullID(date){
+  return `${DAY_NAMES_ID[date.getDay()]}, ${date.getDate()} ${MONTH_NAMES_ID[date.getMonth()]} ${date.getFullYear()}`;
+}
+function addDays(date, n){
+  const nd = new Date(date);
+  nd.setDate(nd.getDate()+n);
+  return nd;
+}
+function isSameDay(a,b){
+  return toDateKey(a) === toDateKey(b);
+}
+
+/* =========================================================
+   SCHEDULE HELPERS (client-side cache of the classes table)
+========================================================= */
+function getClassesForDay(dayIndex){
+  return state.classes
+    .filter(c => c.day === dayIndex)
+    .sort((a,b) => a.time.localeCompare(b.time));
+}
+
+/* =========================================================
+   BOOKING ACTIONS
+========================================================= */
+async function bookClass(classId, dateKey){
+  const member = state.member;
+  if(!member) return;
+  const { data, error } = await sb.rpc('book_class', {
+    p_class_id: classId,
+    p_date: dateKey,
+    p_name: member.name,
+    p_phone: member.phone
+  });
+  if(error){ showToast(error.message); return; }
+  showToast(data === 'BOOKED' ? 'Booking berhasil!' : 'Kamu masuk daftar tunggu.');
+  render();
+}
+/* =========================================================
+   BOOKING RULES (modular — easy to extend later with
+   minimum participant, no-show penalty, max booking/member, etc.)
+========================================================= */
+const BOOKING_RULES = {
+  cancelDeadlineMinutes: 60, // members cannot cancel within this many minutes of class start
+  bookingWindowDays: 2,      // members can only book within this many days before class start
+};
+function getClassStartDateTime(cls, date){
+  const [hh, mm] = cls.time.split(':').map(Number);
+  const dt = new Date(date);
+  dt.setHours(hh, mm, 0, 0);
+  return dt;
+}
+function isPastCancelDeadline(cls, date){
+  const start = getClassStartDateTime(cls, date);
+  const deadline = new Date(start.getTime() - BOOKING_RULES.cancelDeadlineMinutes * 60000);
+  return new Date() >= deadline;
+}
+function getBookingOpensAt(cls, date){
+  const start = getClassStartDateTime(cls, date);
+  return new Date(start.getTime() - BOOKING_RULES.bookingWindowDays * 24 * 60 * 60 * 1000);
+}
+function isBookingWindowOpen(cls, date){
+  return new Date() >= getBookingOpensAt(cls, date);
+}
+function formatOpensAtID(dt){
+  const time = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+  return `${DAY_NAMES_ID[dt.getDay()]}, ${dt.getDate()} ${MONTH_NAMES_ID[dt.getMonth()]} pukul ${time}`;
+}
+
+async function memberCancelBooking(bookingId){
+  const member = state.member;
+  if(!member) return;
+  const { error } = await sb.rpc('cancel_my_booking', { p_booking_id: bookingId, p_phone: member.phone });
+  if(error){ showToast(error.message); return; }
+  showToast('Booking dibatalkan.');
+  render();
+}
+async function setAttendance(bookingId, newStatus){
+  const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
+  if(error){ showToast('Gagal: ' + error.message); return; }
+  render();
+}
+async function adminCancelBooking(bookingId){
+  const { data: booking, error: fetchErr } = await sb.from('bookings').select('*').eq('id', bookingId).single();
+  if(fetchErr || !booking){ showToast('Booking tidak ditemukan.'); return; }
+  const wasActive = booking.status === 'BOOKED';
+
+  const { error } = await sb.from('bookings').update({ status: 'CANCELLED' }).eq('id', bookingId);
+  if(error){ showToast('Gagal: ' + error.message); return; }
+
+  if(wasActive){
+    const { data: nextWaitlist } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('class_id', booking.class_id)
+      .eq('occurrence_date', booking.occurrence_date)
+      .eq('status', 'WAITLIST')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if(nextWaitlist){
+      await sb.from('bookings').update({ status: 'BOOKED' }).eq('id', nextWaitlist.id);
+    }
+  }
+  showToast('Booking dibatalkan.');
+  render();
+}
+async function adminPromote(bookingId){
+  const { error } = await sb.from('bookings').update({ status: 'BOOKED' }).eq('id', bookingId);
+  if(error){ showToast('Gagal: ' + error.message); return; }
+  showToast('Member dipromosikan dari daftar tunggu.');
+  render();
+}
+
+/* =========================================================
+   RECURRING CLASS TEMPLATE CRUD (ADMIN)
+========================================================= */
+async function addOrUpdateClass(data, editingId){
+  let error;
+  if(editingId){
+    ({ error } = await sb.from('classes').update(data).eq('id', editingId));
+  } else {
+    ({ error } = await sb.from('classes').insert(data));
+  }
+  if(error){ showToast('Gagal menyimpan kelas: ' + error.message); return; }
+  closeModal();
+  showToast(editingId ? 'Kelas diperbarui.' : 'Kelas baru ditambahkan.');
+  state.classes = await loadClassesFromDb();
+  render();
+}
+async function deleteClass(classId){
+  if(!confirm('Hapus kelas ini beserta seluruh riwayat booking-nya?')) return;
+  const { error } = await sb.from('classes').delete().eq('id', classId);
+  if(error){ showToast('Gagal menghapus kelas: ' + error.message); return; }
+  showToast('Kelas dihapus.');
+  state.classes = await loadClassesFromDb();
+  render();
+}
+
+/* =========================================================
+   RESET (admin-only — this affects the shared database for
+   every member, not just this device)
+========================================================= */
+async function adminResetDemoData(){
+  if(!confirm('Ini akan MENGHAPUS SEMUA booking dan mengembalikan jadwal ke jadwal default untuk SEMUA pengguna. Lanjutkan?')) return;
+  await sb.from('bookings').delete().not('id', 'is', null);
+  await sb.from('classes').delete().not('id', 'is', null);
+  const seed = defaultClasses().map(({ id, ...rest }) => rest);
+  const { error } = await sb.from('classes').insert(seed);
+  if(error){ showToast('Gagal reset: ' + error.message); return; }
+  state.classes = await loadClassesFromDb();
+  showToast('Data direset untuk semua pengguna.');
+  render();
+}
+
+/* =========================================================
+   UI: TOAST
+========================================================= */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+/* =========================================================
+   UI: MODAL
+========================================================= */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function closeModal(){
+  document.getElementById('overlay').classList.add('hidden');
+}
+document.getElementById('overlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'overlay') closeModal();
+});
+
+/* =========================================================
+   TAB SWITCHING
+========================================================= */
+function switchTab(tab){
+  state.activeTab = tab;
+  document.getElementById('tabMemberBtn').classList.toggle('active', tab==='member');
+  document.getElementById('tabAdminBtn').classList.toggle('active', tab==='admin');
+  render();
+}
+
+/* =========================================================
+   RENDER: MEMBER — REGISTRATION
+========================================================= */
+function renderRegistration(){
+  return `
+    <div class="reg-card">
+      <h2>Selamat Datang</h2>
+      <p>Masukkan namamu dan nomor WhatsApp untuk mulai booking kelas group fitness.</p>
+      <div class="field">
+        <label>Nama Lengkap</label>
+        <input type="text" id="regName" placeholder="cth. Dewi Anggraini">
+      </div>
+      <div class="field">
+        <label>Nomor WhatsApp</label>
+        <input type="tel" id="regPhone" placeholder="cth. 08123456789">
+      </div>
+      <button class="btn btn-primary" onclick="submitRegistration()">Mulai Booking</button>
+    </div>
+    ${renderDiagnosticPanel()}
+  `;
+}
+function renderDiagnosticPanel(){
+  return `
+    <div class="reg-card" style="margin-top:16px;text-align:left;">
+      <h2 style="font-size:18px;">Diagnostik Koneksi</h2>
+      <p>Untuk cek kenapa kelas gagal dimuat, tanpa perlu DevTools.</p>
+      <button class="btn btn-outline" onclick="runDiagnostics()">Jalankan Cek Koneksi</button>
+      <pre id="diagnosticOutput" style="margin-top:12px;white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.6;color:var(--text);background:var(--surface-2);padding:12px;border-radius:8px;max-height:400px;overflow:auto;"></pre>
+    </div>
+  `;
+}
+async function runDiagnostics(){
+  const out = document.getElementById('diagnosticOutput');
+  out.textContent = 'Menjalankan tes...';
+  const results = [];
+
+  results.push(`URL yang dipakai:\n${SUPABASE_URL}`);
+  results.push(`Key (10 karakter awal): ${SUPABASE_ANON_KEY.slice(0, 10)}...`);
+
+  try{
+    const { data, error, status } = await sb.from('classes').select('id,name').limit(3);
+    if(error){
+      results.push(`TES 1 - SELECT classes: GAGAL\nStatus: ${status}\nDetail: ${JSON.stringify(error, null, 2)}`);
+    } else {
+      results.push(`TES 1 - SELECT classes: BERHASIL\nStatus: ${status}\nContoh data: ${JSON.stringify(data, null, 2)}`);
+    }
+  } catch(e){
+    results.push(`TES 1 - SELECT classes: EXCEPTION (gagal sebelum sampai server)\n${e.name}: ${e.message}`);
+  }
+
+  try{
+    const dateKey = toDateKey(new Date());
+    const { data, error, status } = await sb.rpc('get_occurrences', { p_date: dateKey });
+    if(error){
+      results.push(`TES 2 - RPC get_occurrences (${dateKey}): GAGAL\nStatus: ${status}\nDetail: ${JSON.stringify(error, null, 2)}`);
+    } else {
+      results.push(`TES 2 - RPC get_occurrences (${dateKey}): BERHASIL\nHasil: ${JSON.stringify(data, null, 2)}`);
+    }
+  } catch(e){
+    results.push(`TES 2 - RPC get_occurrences: EXCEPTION (gagal sebelum sampai server)\n${e.name}: ${e.message}`);
+  }
+
+  out.textContent = results.join('\n\n---\n\n');
+}
+function submitRegistration(){
+  const name = document.getElementById('regName').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  if(!name || !phone){ showToast('Nama dan nomor WhatsApp wajib diisi.'); return; }
+  state.member = {name, phone};
+  saveMember(state.member);
+  render();
+}
+function changeProfile(){
+  clearMember();
+  state.member = null;
+  render();
+}
+
+/* =========================================================
+   RENDER: MEMBER — WEEK TRACK + DATE NAV
+========================================================= */
+function renderWeekTrack(){
+  const today = startOfDay(new Date());
+  let pills = '';
+  for(let i=0;i<7;i++){
+    const d = addDays(state.selectedDate, i - state.selectedDate.getDay());
+    const hasClass = getClassesForDay(d.getDay()).length > 0;
+    const isSelected = isSameDay(d, state.selectedDate);
+    const isToday = isSameDay(d, today);
+    const isPast = startOfDay(d) < today;
+    pills += `
+      <button class="day-pill ${hasClass ? 'has-class' : ''} ${isSelected ? 'selected' : ''} ${isToday ? 'today':''} ${isPast ? 'disabled':''}"
+        ${isPast ? 'disabled' : `onclick="selectDate('${toDateKey(d)}')"`}>
+        <span class="dname">${DAY_NAMES_SHORT[d.getDay()]}</span>
+        <span class="dnum">${d.getDate()}</span>
+        <span class="ddot"></span>
+      </button>
+    `;
+  }
+  return `<div class="week-track">${pills}</div>`;
+}
+function selectDate(dateKey){
+  state.selectedDate = startOfDay(new Date(dateKey + 'T00:00:00'));
+  render();
+}
+function renderDateNav(){
+  const today = startOfDay(new Date());
+  const isToday = isSameDay(state.selectedDate, today);
+  return `
+    <div class="date-nav">
+      <button class="nav-arrow" onclick="shiftDate(-1)" ${isToday ? 'disabled style="opacity:.3;cursor:not-allowed;"' : ''}>‹</button>
+      <div class="date-label">
+        <div class="dow">${DAY_NAMES_ID[state.selectedDate.getDay()]}</div>
+        <div class="full">${state.selectedDate.getDate()} ${MONTH_NAMES_ID[state.selectedDate.getMonth()]} ${state.selectedDate.getFullYear()}</div>
+        ${!isToday ? `<button class="today-chip" onclick="goToday()">Hari Ini</button>` : ''}
+      </div>
+      <button class="nav-arrow" onclick="shiftDate(1)">›</button>
+    </div>
+  `;
+}
+function shiftDate(n){
+  const today = startOfDay(new Date());
+  const next = addDays(state.selectedDate, n);
+  state.selectedDate = next < today ? today : next;
+  render();
+}
+function goToday(){
+  state.selectedDate = startOfDay(new Date());
+  render();
+}
+
+/* =========================================================
+   RENDER: MEMBER — CLASS LIST
+========================================================= */
+function renderClassCard(occ, date){
+  const bookedCount = occ.booked_count;
+  const waitlistCount = occ.waitlist_count;
+  const pct = Math.min(100, Math.round((bookedCount / occ.capacity) * 100));
+  const isFull = bookedCount >= occ.capacity;
+  const cat = CATEGORY_MAP[occ.name] || 'strength';
+  const catStyle = CATEGORY_STYLE[cat];
+
+  const myBooking = state.myBookings.find(b => b.class_id === occ.class_id);
+  const lockedForCancel = isPastCancelDeadline(occ, date);
+
+  let actionHtml = '';
+  if(!state.member){
+    actionHtml = `<button class="btn btn-outline" disabled>Login untuk booking</button>`;
+  } else if(myBooking && myBooking.status === 'BOOKED'){
+    actionHtml = `
+      <div class="status-badge badge-booked" style="margin-bottom:8px;display:inline-block;">Kamu Booked</div>
+      ${lockedForCancel
+        ? `<button class="btn btn-outline" disabled>Batas Pembatalan Lewat</button>
+           <div class="waitlist-text" style="margin-top:6px;">Tidak bisa dibatalkan kurang dari ${BOOKING_RULES.cancelDeadlineMinutes} menit sebelum kelas.</div>`
+        : `<button class="btn btn-danger" onclick="memberCancelBooking('${myBooking.booking_id}')">Batalkan Booking</button>`}
+    `;
+  } else if(myBooking && myBooking.status === 'WAITLIST'){
+    actionHtml = `
+      <div class="status-badge badge-waitlist" style="margin-bottom:8px;display:inline-block;">Kamu di Daftar Tunggu</div>
+      ${lockedForCancel
+        ? `<button class="btn btn-outline" disabled>Batas Pembatalan Lewat</button>`
+        : `<button class="btn btn-danger" onclick="memberCancelBooking('${myBooking.booking_id}')">Batalkan</button>`}
+    `;
+  } else if(!isBookingWindowOpen(occ, date)){
+    actionHtml = `
+      <button class="btn btn-outline" disabled>Booking Belum Dibuka</button>
+      <div class="waitlist-text" style="margin-top:6px;">Dibuka mulai ${formatOpensAtID(getBookingOpensAt(occ, date))}</div>
+    `;
+  } else if(isFull){
+    actionHtml = `<button class="btn btn-amber" onclick="bookClass(${occ.class_id}, '${toDateKey(date)}')">Gabung Waitlist</button>`;
+  } else {
+    actionHtml = `<button class="btn btn-primary" onclick="bookClass(${occ.class_id}, '${toDateKey(date)}')">Booking</button>`;
+  }
+
+  return `
+    <div class="class-card">
+      <div class="class-accent" style="background:${catStyle.accent};"></div>
+      <div class="class-body">
+        <div class="class-top">
+          <div>
+            <div class="class-name">${occ.name}</div>
+            <div class="class-meta">${DAY_NAMES_ID[date.getDay()]} • ${occ.time}</div>
+            <div class="class-instructor">Instructor: ${occ.instructor}</div>
+          </div>
+          <div class="class-cat" style="background:${catStyle.dim};color:${catStyle.accent};">${catStyle.label}</div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-labels">
+            <span>${bookedCount} / ${occ.capacity} peserta</span>
+            <span style="color:${isFull ? 'var(--coral)' : 'var(--muted)'}">${isFull ? 'PENUH' : (occ.capacity - bookedCount) + ' slot tersedia'}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${pct}%; background:${isFull ? 'var(--coral)' : catStyle.accent};"></div>
+          </div>
+          ${waitlistCount > 0 ? `<div class="waitlist-text">Daftar Tunggu: ${waitlistCount}</div>` : ''}
+        </div>
+        <div class="class-actions">${actionHtml}</div>
+      </div>
+    </div>
+  `;
+}
+function renderClassList(){
+  const now = new Date();
+  const upcoming = state.occurrences.filter(o => getClassStartDateTime(o, state.selectedDate) >= now);
+
+  if(state.occurrences.length === 0){
+    return `
+      <div class="empty-state">
+        <div class="big">Tidak Ada Kelas</div>
+        <div>Tidak ada jadwal group fitness pada hari ini.</div>
+      </div>
+    `;
+  }
+  if(upcoming.length === 0){
+    return `
+      <div class="empty-state">
+        <div class="big">Kelas Hari Ini Sudah Selesai</div>
+        <div>Semua kelas pada hari ini sudah berlalu. Cek jadwal besok.</div>
+      </div>
+    `;
+  }
+  return upcoming.map(o => renderClassCard(o, state.selectedDate)).join('');
+}
+
+/* =========================================================
+   RENDER: MEMBER VIEW ROOT
+========================================================= */
+function renderMemberShell(bodyHtml){
+  return `
+    <div class="greet-row">
+      <div class="who">Halo, <b>${state.member.name.split(' ')[0]}</b></div>
+      <button class="link-btn" onclick="changeProfile()">Ganti Profil</button>
+    </div>
+    ${renderWeekTrack()}
+    ${renderDateNav()}
+    ${bodyHtml}
+    ${renderDiagnosticPanel()}
+  `;
+}
+async function renderMemberInto(main){
+  if(!state.member){
+    main.innerHTML = renderRegistration();
+    return;
+  }
+  main.innerHTML = renderMemberShell(`<div class="empty-state"><div class="big">Memuat...</div></div>`);
+  const [occurrences, myBookings] = await Promise.all([
+    loadOccurrencesForDate(state.selectedDate),
+    loadMyBookingsForDate(state.selectedDate, state.member.phone)
+  ]);
+  state.occurrences = occurrences;
+  state.myBookings = myBookings;
+  main.innerHTML = renderMemberShell(renderClassList());
+}
+
+/* =========================================================
+   RENDER: ADMIN — STATS
+========================================================= */
+async function computeStats(){
+  const totalClasses = state.classes.length;
+  const { count: totalBookings } = await supabase
+    .from('bookings')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['BOOKED','ATTENDED','NO-SHOW']);
+
+  const occ = await loadOccurrencesForDate(state.adminSelectedDate);
+  const fullCount = occ.filter(o => o.booked_count >= o.capacity).length;
+  const waitlistCount = occ.reduce((sum, o) => sum + o.waitlist_count, 0);
+
+  return { totalClasses, totalBookings: totalBookings || 0, fullCount, waitlistCount };
+}
+function renderAdminStats(s){
+  return `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num">${s.totalClasses}</div><div class="lbl">Total Kelas</div></div>
+      <div class="stat-card"><div class="num">${s.totalBookings}</div><div class="lbl">Total Booking</div></div>
+      <div class="stat-card"><div class="num">${s.fullCount}</div><div class="lbl">Kelas Penuh (hari ini)</div></div>
+      <div class="stat-card"><div class="num">${s.waitlistCount}</div><div class="lbl">Daftar Tunggu (hari ini)</div></div>
+    </div>
+  `;
+}
+
+/* =========================================================
+   RENDER: ADMIN — SCHEDULE MANAGEMENT
+========================================================= */
+function renderAdminSchedule(){
+  const grouped = [1,2,3,4,5,6,0].map(day => ({
+    day,
+    items: getClassesForDay(day)
+  }));
+  let html = `<button class="btn btn-primary" style="margin-bottom:16px;" onclick="openClassForm()">+ Tambah Kelas</button>`;
+  grouped.forEach(g => {
+    if(g.items.length === 0) return;
+    html += `<div class="roster-section-label">${DAY_NAMES_ID[g.day]}</div>`;
+    g.items.forEach(c => {
+      html += `
+        <div class="tpl-row">
+          <div class="tpl-info">
+            <div class="name">${c.name}</div>
+            <div class="meta">${c.time} • ${c.instructor} • Kapasitas ${c.capacity}</div>
+          </div>
+          <div class="tpl-actions">
+            <button class="icon-btn" onclick="openClassForm(${c.id})" title="Edit">✎</button>
+            <button class="icon-btn danger" onclick="deleteClass(${c.id})" title="Hapus">✕</button>
+          </div>
+        </div>
+      `;
+    });
+  });
+  return html;
+}
+function openClassForm(editingId){
+  const cls = editingId ? state.classes.find(c=>c.id===editingId) : null;
+  const dayOptions = [1,2,3,4,5,6,0].map(d => `<option value="${d}" ${cls && cls.day===d ? 'selected':''}>${DAY_NAMES_ID[d]}</option>`).join('');
+  openModal(`
+    <div class="modal-wrap">
+      <button class="close-x" onclick="closeModal()">✕</button>
+      <h3>${cls ? 'Edit Kelas' : 'Tambah Kelas Baru'}</h3>
+      <div class="field">
+        <label>Nama Kelas</label>
+        <input type="text" id="fName" value="${cls ? cls.name : ''}" placeholder="cth. TRX">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Hari</label>
+          <select id="fDay">${dayOptions}</select>
+        </div>
+        <div class="field">
+          <label>Jam</label>
+          <input type="time" id="fTime" value="${cls ? cls.time : '08:00'}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Instructor</label>
+          <input type="text" id="fInstructor" value="${cls ? cls.instructor : ''}">
+        </div>
+        <div class="field">
+          <label>Kapasitas</label>
+          <input type="number" id="fCapacity" min="1" value="${cls ? cls.capacity : 10}">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="submitClassForm(${editingId || 'null'})">Simpan Kelas</button>
+    </div>
+  `);
+}
+function submitClassForm(editingId){
+  const name = document.getElementById('fName').value.trim();
+  const day = parseInt(document.getElementById('fDay').value, 10);
+  const time = document.getElementById('fTime').value;
+  const instructor = document.getElementById('fInstructor').value.trim();
+  const capacity = parseInt(document.getElementById('fCapacity').value, 10);
+  if(!name || !instructor || !time || !capacity || capacity < 1){
+    showToast('Lengkapi semua kolom dengan benar.');
+    return;
+  }
+  addOrUpdateClass({name, day, time, instructor, capacity}, editingId);
+}
+
+/* =========================================================
+   RENDER: ADMIN — DAILY BOOKINGS / ROSTER
+========================================================= */
+function renderAdminDateNav(){
+  const today = startOfDay(new Date());
+  const isToday = isSameDay(state.adminSelectedDate, today);
+  return `
+    <div class="date-nav">
+      <button class="nav-arrow" onclick="shiftAdminDate(-1)">‹</button>
+      <div class="date-label">
+        <div class="dow">${DAY_NAMES_ID[state.adminSelectedDate.getDay()]}</div>
+        <div class="full">${state.adminSelectedDate.getDate()} ${MONTH_NAMES_ID[state.adminSelectedDate.getMonth()]} ${state.adminSelectedDate.getFullYear()}</div>
+        ${!isToday ? `<button class="today-chip" onclick="goAdminToday()">Hari Ini</button>` : ''}
+      </div>
+      <button class="nav-arrow" onclick="shiftAdminDate(1)">›</button>
+    </div>
+  `;
+}
+function shiftAdminDate(n){
+  state.adminSelectedDate = addDays(state.adminSelectedDate, n);
+  render();
+}
+function goAdminToday(){
+  state.adminSelectedDate = startOfDay(new Date());
+  render();
+}
+function statusMiniBadge(status){
+  const map = {
+    'ATTENDED': '<span class="status-badge badge-booked">Hadir</span>',
+    'NO-SHOW': '<span class="status-badge" style="background:var(--coral-dim);color:var(--coral);">No-Show</span>',
+    'BOOKED': ''
+  };
+  return map[status] || '';
+}
+function renderAdminRoster(){
+  const classes = getClassesForDay(state.adminSelectedDate.getDay());
+  if(classes.length === 0){
+    return `<div class="empty-state"><div class="big">Tidak Ada Kelas</div><div>Tidak ada jadwal pada tanggal ini.</div></div>`;
+  }
+  return classes.map(c => {
+    const all = state.adminRoster.filter(b => b.class_id === c.id);
+    const active = all.filter(b => b.status==='BOOKED'||b.status==='ATTENDED'||b.status==='NO-SHOW');
+    const waitlist = all.filter(b => b.status==='WAITLIST').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+
+    let bookedHtml = active.length ? active.map(b => `
+      <div class="roster-item">
+        <div>
+          <div class="pname">${b.member_name} ${statusMiniBadge(b.status)}</div>
+          <div class="pphone">${b.phone}</div>
+        </div>
+        <div class="roster-actions">
+          ${b.status === 'BOOKED' ? `
+            <button class="mini-btn teal" onclick="setAttendance('${b.id}','ATTENDED')">Hadir</button>
+            <button class="mini-btn amber" onclick="setAttendance('${b.id}','NO-SHOW')">No-Show</button>
+          ` : ''}
+          <button class="mini-btn coral" onclick="adminCancelBooking('${b.id}')">Batal</button>
+        </div>
+      </div>
+    `).join('') : `<div class="none-text">Belum ada peserta booked.</div>`;
+
+    let waitlistHtml = waitlist.length ? waitlist.map(b => `
+      <div class="roster-item">
+        <div>
+          <div class="pname">${b.member_name}</div>
+          <div class="pphone">${b.phone}</div>
+        </div>
+        <div class="roster-actions">
+          <button class="mini-btn teal" onclick="adminPromote('${b.id}')">Promosikan</button>
+          <button class="mini-btn coral" onclick="adminCancelBooking('${b.id}')">Hapus</button>
+        </div>
+      </div>
+    `).join('') : `<div class="none-text">Tidak ada daftar tunggu.</div>`;
+
+    return `
+      <div class="roster-block">
+        <div class="roster-title">
+          <div class="name">${c.name}</div>
+          <div class="cap">${active.length} / ${c.capacity}</div>
+        </div>
+        <div class="roster-sub">${c.time} • ${c.instructor}</div>
+        <div class="roster-section-label">Booked</div>
+        ${bookedHtml}
+        <div class="roster-section-label">Daftar Tunggu</div>
+        ${waitlistHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+/* =========================================================
+   RENDER: ADMIN — LOGIN GATE (real Supabase Auth)
+========================================================= */
+function renderAdminLogin(){
+  return `
+    <div class="reg-card">
+      <h2>Admin Login</h2>
+      <p>Halaman ini khusus untuk staf. Masuk dengan akun admin yang terdaftar.</p>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="adminEmail" placeholder="staf@planetfun.id">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="adminPassword" placeholder="Masukkan password" onkeydown="if(event.key==='Enter') submitAdminLogin()">
+      </div>
+      <button class="btn btn-primary" onclick="submitAdminLogin()">Masuk</button>
+      <div id="adminLoginError" style="margin-top:12px;color:var(--coral);font-size:13px;line-height:1.5;"></div>
+    </div>
+    ${renderDiagnosticPanel()}
+  `;
+}
+async function submitAdminLogin(){
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const errBox = document.getElementById('adminLoginError');
+  errBox.textContent = '';
+  if(!email || !password){ errBox.textContent = 'Email dan password wajib diisi.'; return; }
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errBox.textContent = `Login gagal: ${error.message} (status: ${error.status || '-'})`; return; }
+
+  const isAdmin = await checkIsAdmin(data.user.id);
+  if(!isAdmin){
+    await sb.auth.signOut();
+    errBox.textContent = `Login berhasil, tapi akun ini belum terdaftar di tabel 'admins'. User ID: ${data.user.id}`;
+    return;
+  }
+  state.isAdmin = true;
+  showToast('Berhasil masuk sebagai admin.');
+  render();
+}
+async function checkIsAdmin(userId){
+  const { data } = await sb.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
+  return !!data;
+}
+async function restoreAdminSession(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    state.isAdmin = await checkIsAdmin(session.user.id);
+  }
+}
+async function adminLogout(){
+  await sb.auth.signOut();
+  state.isAdmin = false;
+  switchTab('member');
+}
+
+/* =========================================================
+   RENDER: ADMIN VIEW ROOT
+========================================================= */
+async function renderAdminInto(main){
+  if(!state.isAdmin){
+    main.innerHTML = renderAdminLogin();
+    return;
+  }
+  main.innerHTML = `<div class="empty-state"><div class="big">Memuat...</div></div>`;
+
+  const [stats] = await Promise.all([
+    computeStats(),
+    (async () => { state.adminRoster = await loadAdminRosterForDate(state.adminSelectedDate); })()
+  ]);
+
+  main.innerHTML = `
+    <div class="greet-row">
+      <div class="who">Admin Dashboard</div>
+      <button class="link-btn" onclick="adminLogout()">Keluar</button>
+    </div>
+    ${renderAdminStats(stats)}
+    <div class="admin-subtabs">
+      <button class="${state.adminSubtab==='schedule'?'active':''}" onclick="setAdminSubtab('schedule')">Jadwal Kelas</button>
+      <button class="${state.adminSubtab==='bookings'?'active':''}" onclick="setAdminSubtab('bookings')">Booking Harian</button>
+    </div>
+    ${state.adminSubtab === 'schedule' ? renderAdminSchedule() : (renderAdminDateNav() + renderAdminRoster())}
+    ${state.adminSubtab === 'schedule' ? `
+      <button class="btn btn-outline" style="margin-top:20px;color:var(--coral);border-color:var(--coral-dim);" onclick="adminResetDemoData()">Reset Semua Data (Admin)</button>
+    ` : ''}
+  `;
+}
+function setAdminSubtab(tab){
+  state.adminSubtab = tab;
+  render();
+}
+
+/* =========================================================
+   MASTER RENDER
+========================================================= */
+function render(){
+  const main = document.getElementById('mainContent');
+  const task = state.activeTab === 'member' ? renderMemberInto(main) : renderAdminInto(main);
+  task.catch(err => showFatalError(err));
+}
+
+/* =========================================================
+   BOOTSTRAP
+========================================================= */
+function showFatalError(err){
+  console.error(err);
+  const main = document.getElementById('mainContent');
+  if(main){
+    main.innerHTML = `
+      <div class="reg-card" style="border-color:var(--coral);text-align:left;">
+        <h2 style="color:var(--coral);">Terjadi Error</h2>
+        <p style="color:var(--text);word-break:break-word;font-family:monospace;font-size:12px;line-height:1.6;">${(err && (err.message || String(err))) || 'Unknown error'}</p>
+        <p>Screenshot pesan ini dan kirim ke developer untuk diperbaiki.</p>
+      </div>
+    `;
+  }
+}
+window.addEventListener('error', (e) => showFatalError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => showFatalError(e.reason));
+
+async function init(){
+  try{
+    state.classes = await loadClassesFromDb();
+    await restoreAdminSession();
+    render();
+  } catch(err){
+    showFatalError(err);
+  }
+}
+init();
+</script>
+</body>
+</html>
