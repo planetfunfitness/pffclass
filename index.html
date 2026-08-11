@@ -538,7 +538,7 @@ async function loadAdminRosterForDate(date){
   const classesToday = getClassesForDay(date.getDay());
   if(classesToday.length === 0) return [];
   const classIds = classesToday.map(c => c.id);
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('bookings')
     .select('*')
     .eq('occurrence_date', dateKey)
@@ -680,7 +680,7 @@ async function adminCancelBooking(bookingId){
   if(error){ showToast('Gagal: ' + error.message); return; }
 
   if(wasActive){
-    const { data: nextWaitlist } = await supabase
+    const { data: nextWaitlist } = await sb
       .from('bookings')
       .select('id')
       .eq('class_id', booking.class_id)
@@ -1039,7 +1039,7 @@ async function renderMemberInto(main){
 ========================================================= */
 async function computeStats(){
   const totalClasses = state.classes.length;
-  const { count: totalBookings } = await supabase
+  const { count: totalBookings } = await sb
     .from('bookings')
     .select('*', { count: 'exact', head: true })
     .in('status', ['BOOKED','ATTENDED','NO-SHOW']);
