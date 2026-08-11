@@ -6,7 +6,7 @@
 <title>Planet Fun Fitness — Booking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@sb/sb-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --ink:#050609;
@@ -440,6 +440,7 @@
       <div class="brand-mark">Planet Fun<span>.</span></div>
     </div>
     <div class="brand-sub">Fitness — Booking Kelas</div>
+    <div style="color:var(--coral);font-size:11px;font-weight:800;letter-spacing:1px;margin-top:4px;">BUILD-CHECK-AUG10-V2</div>
     <div class="tabs">
       <button class="tab-btn active" id="tabMemberBtn" onclick="switchTab('member')">MEMBER</button>
       <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin')">ADMIN</button>
@@ -537,7 +538,7 @@ async function loadAdminRosterForDate(date){
   const classesToday = getClassesForDay(date.getDay());
   if(classesToday.length === 0) return [];
   const classIds = classesToday.map(c => c.id);
-  const { data, error } = await sb
+  const { data, error } = await supabase
     .from('bookings')
     .select('*')
     .eq('occurrence_date', dateKey)
@@ -679,7 +680,7 @@ async function adminCancelBooking(bookingId){
   if(error){ showToast('Gagal: ' + error.message); return; }
 
   if(wasActive){
-    const { data: nextWaitlist } = await sb
+    const { data: nextWaitlist } = await supabase
       .from('bookings')
       .select('id')
       .eq('class_id', booking.class_id)
@@ -1038,7 +1039,7 @@ async function renderMemberInto(main){
 ========================================================= */
 async function computeStats(){
   const totalClasses = state.classes.length;
-  const { count: totalBookings } = await sb
+  const { count: totalBookings } = await supabase
     .from('bookings')
     .select('*', { count: 'exact', head: true })
     .in('status', ['BOOKED','ATTENDED','NO-SHOW']);
