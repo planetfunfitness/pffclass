@@ -780,7 +780,7 @@ function normalizePhone(raw){
   return digits;
 }
 function phoneToAuthEmail(normalizedPhone){
-  return `${normalizedPhone}@member.planetfunfitness.internal`;
+  return `member.${normalizedPhone}@planetfunfitness-app.com`;
 }
 
 function renderMemberAuth(){
