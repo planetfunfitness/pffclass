@@ -1079,6 +1079,9 @@ function renderMemberShell(bodyHtml){
 }
 function renderMemberSummary(){
   const s = state.mySummary;
+  if(s && s.__error){
+    return `<div class="waitlist-text" style="margin:14px 0;">Gagal memuat ringkasan: ${s.__error}</div>`;
+  }
   if(!s) return '';
   const noShowBlocked = s.no_show >= BOOKING_RULES.noShowLimit;
   const noShowColor = noShowBlocked ? 'var(--coral)' : (s.no_show > 0 ? 'var(--amber)' : 'var(--text)');
@@ -1094,7 +1097,8 @@ function renderMemberSummary(){
 }
 async function loadMySummary(){
   const { data, error } = await sb.rpc('get_my_summary_30d');
-  if(error || !data || !data[0]) return null;
+  if(error){ return { __error: error.message }; }
+  if(!data || !data[0]) return null;
   return data[0];
 }
 async function renderMemberInto(main){
