@@ -1439,6 +1439,7 @@ function renderAdminMembers(){
         </div>
         <div class="tpl-actions">
           <button class="icon-btn" onclick="toggleMemberActive('${m.id}', ${m.is_active})" title="${m.is_active ? 'Nonaktifkan' : 'Aktifkan'}">${m.is_active ? '⏸' : '▶'}</button>
+          <button class="icon-btn danger" onclick="deleteMember('${m.id}', '${m.phone}', '${m.name.replace(/'/g, "\\'")}')" title="Hapus Member">✕</button>
         </div>
       </div>
     `;
@@ -1448,6 +1449,29 @@ function renderAdminMembers(){
     <button class="btn btn-primary" style="margin-bottom:16px;" onclick="openMemberForm()">+ Daftarkan Member Baru</button>
     ${rows}
   `;
+}
+async function deleteMember(memberId, phone, name){
+  const email = phoneToAuthEmail(phone);
+  if(!confirm(`Hapus ${name} dari daftar member? (Riwayat booking-nya tetap aman/tidak terhapus)`)) return;
+
+  const { error } = await sb.from('member_profiles').delete().eq('id', memberId);
+  if(error){ showToast('Gagal menghapus: ' + error.message); return; }
+
+  state.memberList = await loadAllMembers();
+  render();
+  showToast('Member dihapus.');
+  openModal(`
+    <div class="modal-wrap">
+      <button class="close-x" onclick="closeModal()">✕</button>
+      <h3>Member Dihapus</h3>
+      <p>Kalau nomor HP <b>${phone}</b> ini mau dipakai daftar ulang dari nol (misalnya karena lupa password), satu langkah lagi wajib dilakukan dulu:</p>
+      <p>1. Buka Supabase Dashboard → Authentication → Users<br>
+      2. Cari email: <b style="word-break:break-all;">${email}</b><br>
+      3. Hapus (Delete) user itu juga</p>
+      <p>Setelah itu baru bisa "+ Daftarkan Member Baru" lagi dengan nomor HP yang sama.</p>
+      <button class="btn btn-primary" onclick="closeModal()">Mengerti</button>
+    </div>
+  `);
 }
 function openMemberForm(){
   openModal(`
