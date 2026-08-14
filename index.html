@@ -477,10 +477,6 @@ const CATEGORY_STYLE = {
   mindbody: {accent:'#6C86FF', dim:'#1c2350', label:'Mind & Body'}
 };
 
-const STORAGE_KEYS = {
-  member: 'pff_member_v1'
-};
-
 /* =========================================================
    SUPABASE CONFIG
    Fill these in after running supabase_setup.sql — see
@@ -527,9 +523,8 @@ async function loadOccurrencesForDate(date){
   if(error){ showToast('Gagal memuat kelas: ' + error.message); return []; }
   return data;
 }
-async function loadMyBookingsForDate(date, phone){
-  if(!phone) return [];
-  const { data, error } = await sb.rpc('get_my_bookings_for_date', { p_date: toDateKey(date), p_phone: phone });
+async function loadMyBookingsForDate(date){
+  const { data, error } = await sb.rpc('get_my_bookings_for_date', { p_date: toDateKey(date) });
   if(error){ return []; }
   return data;
 }
@@ -548,15 +543,10 @@ async function loadAdminRosterForDate(date){
   if(error){ showToast('Gagal memuat booking: ' + error.message); return []; }
   return data;
 }
-function loadMember(){
-  const raw = localStorage.getItem(STORAGE_KEYS.member);
-  return raw ? JSON.parse(raw) : null;
-}
-function saveMember(member){
-  localStorage.setItem(STORAGE_KEYS.member, JSON.stringify(member));
-}
-function clearMember(){
-  localStorage.removeItem(STORAGE_KEYS.member);
+async function loadMemberProfile(userId){
+  const { data, error } = await sb.from('member_profiles').select('name, phone').eq('user_id', userId).maybeSingle();
+  if(error || !data) return null;
+  return data;
 }
 
 /* =========================================================
@@ -571,8 +561,9 @@ let state = {
   classes: [],              // cached schedule templates, loaded at startup
   occurrences: [],          // member view: this date's classes + live counts
   myBookings: [],           // member view: this member's active bookings for this date
+  mySummary: null,          // member view: 30-day attended/no-show/cancelled/upcoming counts
   adminRoster: [],          // admin view: raw bookings for this date's classes
-  member: loadMember(),
+  member: null,             // { name, phone } from member_profiles, once logged in
 };
 
 function startOfDay(d){
@@ -619,9 +610,7 @@ async function bookClass(classId, dateKey){
   if(!member) return;
   const { data, error } = await sb.rpc('book_class', {
     p_class_id: classId,
-    p_date: dateKey,
-    p_name: member.name,
-    p_phone: member.phone
+    p_date: dateKey
   });
   if(error){ showToast(error.message); return; }
   showToast(data === 'BOOKED' ? 'Booking berhasil!' : 'Kamu masuk daftar tunggu.');
@@ -634,6 +623,8 @@ async function bookClass(classId, dateKey){
 const BOOKING_RULES = {
   cancelDeadlineMinutes: 60, // members cannot cancel within this many minutes of class start
   bookingWindowDays: 2,      // members can only book within this many days before class start
+  noShowLimit: 3,            // enforced server-side in book_class() — shown here just for UI messaging
+  noShowWindowDays: 30,
 };
 function getClassStartDateTime(cls, date){
   const [hh, mm] = cls.time.split(':').map(Number);
@@ -661,7 +652,7 @@ function formatOpensAtID(dt){
 async function memberCancelBooking(bookingId){
   const member = state.member;
   if(!member) return;
-  const { error } = await sb.rpc('cancel_my_booking', { p_booking_id: bookingId, p_phone: member.phone });
+  const { error } = await sb.rpc('cancel_my_booking', { p_booking_id: bookingId });
   if(error){ showToast(error.message); return; }
   showToast('Booking dibatalkan.');
   render();
@@ -783,23 +774,101 @@ function switchTab(tab){
 /* =========================================================
    RENDER: MEMBER — REGISTRATION
 ========================================================= */
-function renderRegistration(){
+function normalizePhone(raw){
+  let digits = (raw || '').replace(/\D/g, '');
+  if(digits.startsWith('0')) digits = '62' + digits.slice(1);
+  return digits;
+}
+function phoneToAuthEmail(normalizedPhone){
+  return `${normalizedPhone}@member.planetfunfitness.internal`;
+}
+
+function renderMemberAuth(){
+  const mode = state.memberAuthMode || 'login';
   return `
     <div class="reg-card">
-      <h2>Selamat Datang</h2>
-      <p>Masukkan namamu dan nomor WhatsApp untuk mulai booking kelas group fitness.</p>
-      <div class="field">
-        <label>Nama Lengkap</label>
-        <input type="text" id="regName" placeholder="cth. Dewi Anggraini">
-      </div>
+      <h2>${mode === 'login' ? 'Masuk' : 'Aktivasi Akun'}</h2>
+      <p>${mode === 'login' ? 'Masuk dengan nomor HP dan password kamu.' : 'Masukkan nomor HP dan kode aktivasi yang diberikan admin gym.'}</p>
+      ${mode === 'activate' ? `
+        <div class="field">
+          <label>Kode Aktivasi</label>
+          <input type="text" id="memberActivationCode" placeholder="Kode dari admin gym">
+        </div>
+      ` : ''}
       <div class="field">
         <label>Nomor WhatsApp</label>
-        <input type="tel" id="regPhone" placeholder="cth. 08123456789">
+        <input type="tel" id="memberPhone" placeholder="cth. 08123456789">
       </div>
-      <button class="btn btn-primary" onclick="submitRegistration()">Mulai Booking</button>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="memberPassword" placeholder="${mode === 'login' ? 'Password kamu' : 'Buat password baru (min. 6 karakter)'}" onkeydown="if(event.key==='Enter') ${mode === 'login' ? 'submitMemberLogin()' : 'submitMemberActivate()'}">
+      </div>
+      <button class="btn btn-primary" onclick="${mode === 'login' ? 'submitMemberLogin()' : 'submitMemberActivate()'}">${mode === 'login' ? 'Masuk' : 'Aktivasi'}</button>
+      <div id="memberAuthError" style="margin-top:12px;color:var(--coral);font-size:13px;line-height:1.5;"></div>
+      <button class="link-btn" style="margin-top:14px;" onclick="switchMemberAuthMode('${mode === 'login' ? 'activate' : 'login'}')">
+        ${mode === 'login' ? 'Punya kode aktivasi dari admin? Aktivasi di sini' : 'Sudah punya akun? Masuk di sini'}
+      </button>
     </div>
     ${renderDiagnosticPanel()}
   `;
+}
+function switchMemberAuthMode(mode){
+  state.memberAuthMode = mode;
+  render();
+}
+async function submitMemberActivate(){
+  const code = document.getElementById('memberActivationCode').value.trim();
+  const phoneRaw = document.getElementById('memberPhone').value.trim();
+  const password = document.getElementById('memberPassword').value;
+  const errBox = document.getElementById('memberAuthError');
+  errBox.textContent = '';
+  if(!code || !phoneRaw || !password){ errBox.textContent = 'Semua kolom wajib diisi.'; return; }
+  if(password.length < 6){ errBox.textContent = 'Password minimal 6 karakter.'; return; }
+
+  const phone = normalizePhone(phoneRaw);
+  const email = phoneToAuthEmail(phone);
+
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if(error){ errBox.textContent = 'Gagal aktivasi: ' + error.message; return; }
+  if(!data.user){ errBox.textContent = 'Gagal aktivasi. Coba lagi.'; return; }
+
+  const { error: claimError } = await sb.rpc('claim_membership', { p_phone: phone, p_activation_code: code });
+  if(claimError){
+    errBox.textContent = claimError.message + ' (Hubungi admin jika masalah berlanjut.)';
+    return;
+  }
+
+  const profile = await loadMemberProfile(data.user.id);
+  state.member = profile;
+  showToast('Akun berhasil diaktivasi!');
+  render();
+}
+async function submitMemberLogin(){
+  const phoneRaw = document.getElementById('memberPhone').value.trim();
+  const password = document.getElementById('memberPassword').value;
+  const errBox = document.getElementById('memberAuthError');
+  errBox.textContent = '';
+  if(!phoneRaw || !password){ errBox.textContent = 'Nomor HP dan password wajib diisi.'; return; }
+
+  const phone = normalizePhone(phoneRaw);
+  const email = phoneToAuthEmail(phone);
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errBox.textContent = 'Login gagal: nomor HP atau password salah.'; return; }
+
+  const profile = await loadMemberProfile(data.user.id);
+  if(!profile){ errBox.textContent = 'Profil member tidak ditemukan untuk akun ini.'; return; }
+
+  state.member = profile;
+  state.isAdmin = await checkIsAdmin(data.user.id);
+  showToast('Berhasil masuk!');
+  render();
+}
+async function changeProfile(){
+  await sb.auth.signOut();
+  state.member = null;
+  state.isAdmin = false;
+  render();
 }
 function renderDiagnosticPanel(){
   return `
@@ -843,19 +912,6 @@ async function runDiagnostics(){
   }
 
   out.textContent = results.join('\n\n---\n\n');
-}
-function submitRegistration(){
-  const name = document.getElementById('regName').value.trim();
-  const phone = document.getElementById('regPhone').value.trim();
-  if(!name || !phone){ showToast('Nama dan nomor WhatsApp wajib diisi.'); return; }
-  state.member = {name, phone};
-  saveMember(state.member);
-  render();
-}
-function changeProfile(){
-  clearMember();
-  state.member = null;
-  render();
 }
 
 /* =========================================================
@@ -1013,24 +1069,47 @@ function renderMemberShell(bodyHtml){
       <div class="who">Halo, <b>${state.member.name.split(' ')[0]}</b></div>
       <button class="link-btn" onclick="changeProfile()">Ganti Profil</button>
     </div>
+    ${renderMemberSummary()}
     ${renderWeekTrack()}
     ${renderDateNav()}
     ${bodyHtml}
     ${renderDiagnosticPanel()}
   `;
 }
+function renderMemberSummary(){
+  const s = state.mySummary;
+  if(!s) return '';
+  const noShowBlocked = s.no_show >= BOOKING_RULES.noShowLimit;
+  const noShowColor = noShowBlocked ? 'var(--coral)' : (s.no_show > 0 ? 'var(--amber)' : 'var(--text)');
+  return `
+    <div class="stat-grid" style="margin:14px 0;">
+      <div class="stat-card"><div class="num" style="color:var(--teal);">${s.attended}</div><div class="lbl">Hadir (30 Hari)</div></div>
+      <div class="stat-card"><div class="num" style="color:${noShowColor};">${s.no_show}</div><div class="lbl">No-Show (30 Hari)</div></div>
+      <div class="stat-card"><div class="num">${s.cancelled}</div><div class="lbl">Dibatalkan (30 Hari)</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--coral);">${s.upcoming}</div><div class="lbl">Akan Datang</div></div>
+    </div>
+    ${noShowBlocked ? `<div class="waitlist-text" style="margin-bottom:14px;">Booking baru sementara diblokir karena ${s.no_show} no-show dalam 30 hari terakhir. Hubungi admin gym.</div>` : ''}
+  `;
+}
+async function loadMySummary(){
+  const { data, error } = await sb.rpc('get_my_summary_30d');
+  if(error || !data || !data[0]) return null;
+  return data[0];
+}
 async function renderMemberInto(main){
   if(!state.member){
-    main.innerHTML = renderRegistration();
+    main.innerHTML = renderMemberAuth();
     return;
   }
   main.innerHTML = renderMemberShell(`<div class="empty-state"><div class="big">Memuat...</div></div>`);
-  const [occurrences, myBookings] = await Promise.all([
+  const [occurrences, myBookings, summary] = await Promise.all([
     loadOccurrencesForDate(state.selectedDate),
-    loadMyBookingsForDate(state.selectedDate, state.member.phone)
+    loadMyBookingsForDate(state.selectedDate),
+    loadMySummary()
   ]);
   state.occurrences = occurrences;
   state.myBookings = myBookings;
+  state.mySummary = summary;
   main.innerHTML = renderMemberShell(renderClassList());
 }
 
@@ -1266,6 +1345,8 @@ async function submitAdminLogin(){
     return;
   }
   state.isAdmin = true;
+  const profile = await loadMemberProfile(data.user.id);
+  if(profile) state.member = profile;
   showToast('Berhasil masuk sebagai admin.');
   render();
 }
@@ -1273,15 +1354,17 @@ async function checkIsAdmin(userId){
   const { data } = await sb.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
   return !!data;
 }
-async function restoreAdminSession(){
+async function restoreSession(){
   const { data: { session } } = await sb.auth.getSession();
-  if(session){
-    state.isAdmin = await checkIsAdmin(session.user.id);
-  }
+  if(!session) return;
+  state.isAdmin = await checkIsAdmin(session.user.id);
+  const profile = await loadMemberProfile(session.user.id);
+  if(profile) state.member = profile;
 }
 async function adminLogout(){
   await sb.auth.signOut();
   state.isAdmin = false;
+  state.member = null;
   switchTab('member');
 }
 
@@ -1295,10 +1378,18 @@ async function renderAdminInto(main){
   }
   main.innerHTML = `<div class="empty-state"><div class="big">Memuat...</div></div>`;
 
-  const [stats] = await Promise.all([
-    computeStats(),
-    (async () => { state.adminRoster = await loadAdminRosterForDate(state.adminSelectedDate); })()
-  ]);
+  const tasks = [computeStats()];
+  if(state.adminSubtab === 'members'){
+    tasks.push((async () => { state.memberList = await loadAllMembers(); })());
+  } else {
+    tasks.push((async () => { state.adminRoster = await loadAdminRosterForDate(state.adminSelectedDate); })());
+  }
+  const [stats] = await Promise.all(tasks);
+
+  let bodyHtml;
+  if(state.adminSubtab === 'schedule') bodyHtml = renderAdminSchedule();
+  else if(state.adminSubtab === 'members') bodyHtml = renderAdminMembers();
+  else bodyHtml = renderAdminDateNav() + renderAdminRoster();
 
   main.innerHTML = `
     <div class="greet-row">
@@ -1309,8 +1400,9 @@ async function renderAdminInto(main){
     <div class="admin-subtabs">
       <button class="${state.adminSubtab==='schedule'?'active':''}" onclick="setAdminSubtab('schedule')">Jadwal Kelas</button>
       <button class="${state.adminSubtab==='bookings'?'active':''}" onclick="setAdminSubtab('bookings')">Booking Harian</button>
+      <button class="${state.adminSubtab==='members'?'active':''}" onclick="setAdminSubtab('members')">Member</button>
     </div>
-    ${state.adminSubtab === 'schedule' ? renderAdminSchedule() : (renderAdminDateNav() + renderAdminRoster())}
+    ${bodyHtml}
     ${state.adminSubtab === 'schedule' ? `
       <button class="btn btn-outline" style="margin-top:20px;color:var(--coral);border-color:var(--coral-dim);" onclick="adminResetDemoData()">Reset Semua Data (Admin)</button>
     ` : ''}
@@ -1318,6 +1410,102 @@ async function renderAdminInto(main){
 }
 function setAdminSubtab(tab){
   state.adminSubtab = tab;
+  render();
+}
+
+/* =========================================================
+   ADMIN — MEMBER MANAGEMENT
+========================================================= */
+async function loadAllMembers(){
+  const { data, error } = await sb.from('member_profiles').select('*').order('created_at', { ascending: false });
+  if(error){ showToast('Gagal memuat member: ' + error.message); return []; }
+  return data;
+}
+function generateActivationCode(){
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+function renderAdminMembers(){
+  const members = state.memberList || [];
+  const rows = members.length ? members.map(m => {
+    const expired = m.membership_expires_at && new Date(m.membership_expires_at) < new Date(new Date().toDateString());
+    const statusLabel = !m.is_active ? 'Nonaktif' : (expired ? 'Kadaluarsa' : 'Aktif');
+    const statusColor = !m.is_active || expired ? 'var(--coral)' : 'var(--teal)';
+    return `
+      <div class="tpl-row">
+        <div class="tpl-info">
+          <div class="name">${m.name}</div>
+          <div class="meta">${m.phone} • <span style="color:${statusColor};font-weight:700;">${statusLabel}</span>${m.membership_expires_at ? ' • s/d ' + m.membership_expires_at : ''}</div>
+          ${!m.user_id ? `<div class="meta" style="color:var(--amber);">Belum aktivasi — Kode: ${m.activation_code}</div>` : ''}
+        </div>
+        <div class="tpl-actions">
+          <button class="icon-btn" onclick="toggleMemberActive('${m.id}', ${m.is_active})" title="${m.is_active ? 'Nonaktifkan' : 'Aktifkan'}">${m.is_active ? '⏸' : '▶'}</button>
+        </div>
+      </div>
+    `;
+  }).join('') : `<div class="none-text">Belum ada member terdaftar.</div>`;
+
+  return `
+    <button class="btn btn-primary" style="margin-bottom:16px;" onclick="openMemberForm()">+ Daftarkan Member Baru</button>
+    ${rows}
+  `;
+}
+function openMemberForm(){
+  openModal(`
+    <div class="modal-wrap">
+      <button class="close-x" onclick="closeModal()">✕</button>
+      <h3>Daftarkan Member Baru</h3>
+      <div class="field">
+        <label>Nama Lengkap</label>
+        <input type="text" id="newMemberName" placeholder="cth. Dewi Anggraini">
+      </div>
+      <div class="field">
+        <label>Nomor WhatsApp</label>
+        <input type="tel" id="newMemberPhone" placeholder="cth. 08123456789">
+      </div>
+      <div class="field">
+        <label>Membership Berlaku Sampai (opsional)</label>
+        <input type="date" id="newMemberExpiry">
+      </div>
+      <button class="btn btn-primary" onclick="submitNewMember()">Daftarkan</button>
+    </div>
+  `);
+}
+async function submitNewMember(){
+  const name = document.getElementById('newMemberName').value.trim();
+  const phoneRaw = document.getElementById('newMemberPhone').value.trim();
+  const expiry = document.getElementById('newMemberExpiry').value || null;
+  if(!name || !phoneRaw){ showToast('Nama dan nomor HP wajib diisi.'); return; }
+
+  const phone = normalizePhone(phoneRaw);
+  const code = generateActivationCode();
+
+  const { error } = await sb.from('member_profiles').insert({
+    name, phone, activation_code: code, membership_expires_at: expiry
+  });
+  if(error){ showToast('Gagal mendaftarkan: ' + error.message); return; }
+
+  closeModal();
+  state.memberList = await loadAllMembers();
+  render();
+  openModal(`
+    <div class="modal-wrap">
+      <button class="close-x" onclick="closeModal()">✕</button>
+      <h3>Member Terdaftar!</h3>
+      <p>Kasih tahu <b>${name}</b> kode aktivasi ini (misalnya lewat WhatsApp):</p>
+      <div class="stat-card" style="text-align:center;margin:16px 0;">
+        <div class="num" style="font-size:40px;">${code}</div>
+        <div class="lbl">Kode Aktivasi</div>
+      </div>
+      <p>Nomor HP yang harus dipakai member saat aktivasi: <b>${phoneRaw}</b></p>
+      <button class="btn btn-primary" onclick="closeModal()">Selesai</button>
+    </div>
+  `);
+}
+async function toggleMemberActive(memberId, currentlyActive){
+  const { error } = await sb.from('member_profiles').update({ is_active: !currentlyActive }).eq('id', memberId);
+  if(error){ showToast('Gagal mengubah status: ' + error.message); return; }
+  showToast(!currentlyActive ? 'Member diaktifkan.' : 'Member dinonaktifkan.');
+  state.memberList = await loadAllMembers();
   render();
 }
 
@@ -1352,7 +1540,7 @@ window.addEventListener('unhandledrejection', (e) => showFatalError(e.reason));
 async function init(){
   try{
     state.classes = await loadClassesFromDb();
-    await restoreAdminSession();
+    await restoreSession();
     render();
   } catch(err){
     showFatalError(err);
