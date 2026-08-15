@@ -440,10 +440,12 @@
       <div class="brand-mark">Planet Fun<span>.</span></div>
     </div>
     <div class="brand-sub">Fitness — Booking Kelas</div>
-    <div style="color:var(--coral);font-size:11px;font-weight:800;letter-spacing:1px;margin-top:4px;">BUILD-CHECK-AUG10-V2</div>
     <div class="tabs">
       <button class="tab-btn active" id="tabMemberBtn" onclick="switchTab('member')">MEMBER</button>
-      <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin')">ADMIN</button>
+      <button class="tab-btn" id="tabPublicBtn" onclick="switchTab('public')">JADWAL</button>
+    </div>
+    <div style="text-align:center;margin-top:8px;">
+      <button id="tabAdminBtn" onclick="switchTab('admin')" style="background:none;border:none;color:var(--muted);font-size:10.5px;letter-spacing:.5px;padding:4px;cursor:pointer;opacity:.6;">admin</button>
     </div>
   </header>
 
@@ -767,7 +769,9 @@ document.getElementById('overlay').addEventListener('click', (e)=>{
 function switchTab(tab){
   state.activeTab = tab;
   document.getElementById('tabMemberBtn').classList.toggle('active', tab==='member');
-  document.getElementById('tabAdminBtn').classList.toggle('active', tab==='admin');
+  document.getElementById('tabPublicBtn').classList.toggle('active', tab==='public');
+  document.getElementById('tabAdminBtn').style.opacity = (tab==='admin') ? '1' : '.6';
+  document.getElementById('tabAdminBtn').style.color = (tab==='admin') ? 'var(--coral)' : 'var(--muted)';
   render();
 }
 
@@ -1059,6 +1063,67 @@ function renderClassList(){
     `;
   }
   return upcoming.map(o => renderClassCard(o, state.selectedDate)).join('');
+}
+
+/* =========================================================
+   RENDER: PUBLIC (read-only schedule, no login needed)
+========================================================= */
+function renderPublicClassCard(occ, date){
+  const bookedCount = occ.booked_count;
+  const capacity = occ.capacity;
+  const pct = Math.min(100, Math.round((bookedCount / capacity) * 100));
+  const isFull = bookedCount >= capacity;
+  const cat = CATEGORY_MAP[occ.name] || 'strength';
+  const catStyle = CATEGORY_STYLE[cat];
+  return `
+    <div class="class-card">
+      <div class="class-accent" style="background:${catStyle.accent};"></div>
+      <div class="class-body">
+        <div class="class-top">
+          <div>
+            <div class="class-name">${occ.name}</div>
+            <div class="class-meta">${DAY_NAMES_ID[date.getDay()]} • ${occ.time}</div>
+            <div class="class-instructor">Instructor: ${occ.instructor}</div>
+          </div>
+          <div class="class-cat" style="background:${catStyle.dim};color:${catStyle.accent};">${catStyle.label}</div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-labels">
+            <span>${bookedCount} / ${capacity} peserta</span>
+            <span style="color:${isFull ? 'var(--coral)' : 'var(--muted)'}">${isFull ? 'PENUH' : (capacity - bookedCount) + ' slot tersedia'}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${pct}%; background:${isFull ? 'var(--coral)' : catStyle.accent};"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderPublicClassList(){
+  const now = new Date();
+  const upcoming = state.occurrences.filter(o => getClassStartDateTime(o, state.selectedDate) >= now);
+  if(state.occurrences.length === 0){
+    return `<div class="empty-state"><div class="big">Tidak Ada Kelas</div><div>Tidak ada jadwal group fitness pada hari ini.</div></div>`;
+  }
+  if(upcoming.length === 0){
+    return `<div class="empty-state"><div class="big">Kelas Hari Ini Sudah Selesai</div><div>Semua kelas pada hari ini sudah berlalu. Cek jadwal besok.</div></div>`;
+  }
+  return upcoming.map(o => renderPublicClassCard(o, state.selectedDate)).join('');
+}
+async function renderPublicInto(main){
+  main.innerHTML = `
+    ${renderWeekTrack()}
+    ${renderDateNav()}
+    <div class="empty-state"><div class="big">Memuat...</div></div>
+  `;
+  const occurrences = await loadOccurrencesForDate(state.selectedDate);
+  state.occurrences = occurrences;
+  main.innerHTML = `
+    ${renderWeekTrack()}
+    ${renderDateNav()}
+    ${renderPublicClassList()}
+  `;
 }
 
 /* =========================================================
@@ -1543,7 +1608,10 @@ async function toggleMemberActive(memberId, currentlyActive){
 ========================================================= */
 function render(){
   const main = document.getElementById('mainContent');
-  const task = state.activeTab === 'member' ? renderMemberInto(main) : renderAdminInto(main);
+  let task;
+  if(state.activeTab === 'member') task = renderMemberInto(main);
+  else if(state.activeTab === 'public') task = renderPublicInto(main);
+  else task = renderAdminInto(main);
   task.catch(err => showFatalError(err));
 }
 
